@@ -77,8 +77,47 @@ def _trend_score(ts: pd.Series) -> float:
     return (0.7 * volume * recency) + (0.3 * burst)
 
 
+_CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]")
+_CJK_TOKEN_RE = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]{2,}")
+
+
+def _looks_cjk(texts: List[str], sample: int = 30) -> bool:
+    for t in texts[:sample]:
+        if _CJK_RE.search(t):
+            return True
+    return False
+
+
+def _vectorizer_for(texts: List[str]) -> TfidfVectorizer:
+    # For JP/CJK, word-based tokenization performs poorly. Use char ngrams.
+    if _looks_cjk(texts):
+        return TfidfVectorizer(
+            analyzer="char_wb",
+            ngram_range=(3, 5),
+            min_df=1,
+            sublinear_tf=True,
+        )
+
+    # Default: English-ish word model.
+    return TfidfVectorizer(
+        stop_words="english",
+        ngram_range=(1, 2),
+        min_df=1,
+        sublinear_tf=True,
+    )
+
+
 def _top_keywords_from_cluster(texts: List[str], top_k: int = 8) -> List[str]:
-    vec = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), min_df=1)
+    if _looks_cjk(texts):
+        # Simple phrase mining for readable JP labels.
+        counts: Dict[str, int] = {}
+        for t in texts:
+            for m in _CJK_TOKEN_RE.findall(t):
+                counts[m] = counts.get(m, 0) + 1
+        kws = sorted(counts.items(), key=lambda kv: (-kv[1], -len(kv[0])))
+        return [k for k, _ in kws[:top_k]]
+
+    vec = _vectorizer_for(texts)
     X = vec.fit_transform(texts)
     scores = np.asarray(X.mean(axis=0)).ravel()
     idx = np.argsort(-scores)[:top_k]
@@ -94,10 +133,17 @@ def _representative_posts(texts: List[str], X: np.ndarray, top_k: int = 4) -> Li
     return [texts[i] for i in idx]
 
 
+def _auto_k(n: int) -> int:
+    # Small heuristic: scale clusters with dataset size.
+    return max(3, min(12, int(round(math.sqrt(max(1, n))))))
+
+
 def _tfidf_cluster(df: pd.DataFrame, k: int) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    vec = TfidfVectorizer(stop_words="english", ngram_range=(1, 2), min_df=1)
-    X = vec.fit_transform(df["text"].tolist())
-    km = KMeans(n_clusters=max(2, min(k, len(df))), n_init="auto", random_state=42)
+    texts = df["text"].tolist()
+    vec = _vectorizer_for(texts)
+    X = vec.fit_transform(texts)
+    k_eff = _auto_k(len(df)) if k <= 0 else k
+    km = KMeans(n_clusters=max(2, min(k_eff, len(df))), n_init="auto", random_state=42)
     labels = km.fit_predict(X)
     return X.toarray(), labels, km.cluster_centers_
 
