@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +15,20 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 
+_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
+_HANDLE_RE = re.compile(r"(^|\s)@\w+", re.IGNORECASE)
+_WS_RE = re.compile(r"\s+")
+
+
+def _normalize_text(t: str) -> str:
+    # Keep it conservative: remove URLs/handles, normalize whitespace.
+    t = t.strip()
+    t = _URL_RE.sub("", t)
+    t = _HANDLE_RE.sub(" ", t)
+    t = _WS_RE.sub(" ", t)
+    return t.strip()
+
+
 def _parse_posts(jsonl_path: Path) -> pd.DataFrame:
     rows = []
     for line in jsonl_path.read_text(encoding="utf-8").splitlines():
@@ -21,11 +36,15 @@ def _parse_posts(jsonl_path: Path) -> pd.DataFrame:
         if not line:
             continue
         obj = json.loads(line)
+        text = str(obj.get("text", "") or "")
+        norm = _normalize_text(text)
+        if not norm:
+            continue
         rows.append(
             {
                 "id": str(obj.get("id", "")),
                 "ts": obj.get("ts"),
-                "text": obj.get("text", ""),
+                "text": norm,
                 "source": obj.get("source"),
                 "url": obj.get("url"),
             }
@@ -33,7 +52,10 @@ def _parse_posts(jsonl_path: Path) -> pd.DataFrame:
     df = pd.DataFrame(rows)
     if df.empty:
         raise ValueError("No posts found")
-    df["text"] = df["text"].fillna("").astype(str)
+
+    # Basic de-duplication (exact normalized text). This reduces cluster noise.
+    df = df.drop_duplicates(subset=["text"]).reset_index(drop=True)
+
     # timestamps optional
     if "ts" in df.columns:
         df["ts"] = pd.to_datetime(df["ts"], errors="coerce", utc=True)
@@ -92,18 +114,21 @@ def _semantic_cluster(df: pd.DataFrame):
     return emb, labels
 
 
-def detect_narratives(input_path: Path, method: str = "tfidf", k: int = 6) -> Dict[str, Any]:
+def detect_narratives(input_path: Path, method: str = "auto", k: int = 6) -> Dict[str, Any]:
     df = _parse_posts(input_path)
 
     method = method.lower().strip()
-    if method == "semantic":
+    if method in {"auto", "semantic"}:
         try:
             X, labels = _semantic_cluster(df)
+            method = "semantic"
         except Exception as e:  # fallback to tfidf
             X, labels, _ = _tfidf_cluster(df, k=k)
             method = f"tfidf_fallback ({type(e).__name__})"
-    else:
+    elif method == "tfidf":
         X, labels, _ = _tfidf_cluster(df, k=k)
+    else:
+        raise ValueError("method must be one of: auto|tfidf|semantic")
 
     df = df.copy()
     df["label"] = labels

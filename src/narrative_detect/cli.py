@@ -20,7 +20,7 @@ def detect(
     input_path: Path = typer.Argument(..., exists=True, readable=True, help="JSONL posts"),
     out: Path = typer.Option(Path("out/report.md"), help="Markdown report output path"),
     json_out: Path = typer.Option(Path("out/report.json"), help="Machine-readable report JSON"),
-    method: str = typer.Option("tfidf", help="tfidf|semantic"),
+    method: str = typer.Option("auto", help="auto|tfidf|semantic"),
     k: int = typer.Option(6, help="Clusters for tfidf mode (ignored for semantic mode)")
 ):
     """Detect narratives (clusters) and compute simple trend scores."""
