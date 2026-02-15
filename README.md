@@ -42,6 +42,19 @@ streamlit run web/app.py
 
 ## Data sources
 
+### How we get “SNS narratives”
+
+Right now this repo **does not scrape X/Discord/Telegram directly**. It’s designed to be **data-source agnostic**: you provide a JSONL of posts, and the tool detects narratives + generates ideas.
+
+In the hosted demo (Colab), we run on the bundled sample dataset (`data/sample_posts.jsonl`).
+
+To run on real data, you typically generate the same JSONL format via one of these paths:
+- **Exports**: X export / CSV → convert to JSONL
+- **APIs** (requires your own keys): X API, Reddit API, Farcaster/Hubs, etc.
+- **Public feeds**: RSS/blog feeds / GitHub events (no auth)
+
+If you tell me the exact sources you want (e.g. X lists + a few Telegram channels), I can add an `ingest` command/module that produces `posts.jsonl` from those sources in a reproducible way (keeping keys optional and out of the repo).
+
 This prototype is **offline-first** and ships with a small bundled sample dataset (`data/sample_posts.jsonl`) so anyone can reproduce outputs.
 
 The intent is that you swap in real Solana signals by generating the same JSONL format from any combination of:
