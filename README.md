@@ -11,7 +11,7 @@ This is a working prototype intended for rapid iteration + reproducible demos.
 
 ```bash
 cd target-repos/narrative-detect
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 pip install -e .
