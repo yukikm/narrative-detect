@@ -7,6 +7,19 @@ Offline-first **narrative detection + idea generation** tool.
 
 This is a working prototype intended for rapid iteration + reproducible demos.
 
+## Why this is different (strengths)
+
+Most "narrative dashboards" fail on one of these: (1) you can’t reproduce the results, (2) ingestion requires secret keys / scraping, or (3) it doesn’t work well on non‑English text.
+
+Narrative Detect is built to be:
+
+- **Offline-first + reproducible**: ships with a bundled JSONL dataset and deterministic outputs so judges can verify quickly.
+- **Privacy / key-safe by default**: core pipeline needs **no API keys**; optional ingestion uses `.env` (never committed).
+- **Direct ingestion when you want it**: `narrative ingest` supports RSS (no keys), X (bearer token), and Telegram (export JSON).
+- **Higher-quality clustering with graceful fallback**: `--method auto` uses semantic embeddings when available and falls back to TF‑IDF.
+- **JP/multilingual friendly**: TF‑IDF switches to **char n-grams** for CJK so Japanese clusters don’t collapse.
+- **Trend-relevant summaries**: representative posts are **recency-weighted** (so clusters read like what’s trending now).
+
 ## Quickstart
 
 ```bash
@@ -23,15 +36,23 @@ narrative ideas out/report.json --out out/ideas.md
 
 Outputs land in `out/`.
 
-## Optional: semantic clustering (better quality)
+## Clustering modes
+
+### Recommended: auto (best quality)
 
 ```bash
 pip install -e ".[semantic]"
 
-narrative detect data/sample_posts.jsonl --method semantic --out out/report.md
+narrative detect data/sample_posts.jsonl --method auto --out out/report.md
 ```
 
-If optional deps are missing, the tool automatically falls back to TF‑IDF + KMeans.
+`auto` uses semantic embeddings + HDBSCAN when available and falls back to TF‑IDF + KMeans automatically.
+
+### TF‑IDF only (fast / no extra deps)
+
+```bash
+narrative detect data/sample_posts.jsonl --method tfidf --out out/report.md
+```
 
 ## Optional: web demo (Streamlit)
 
