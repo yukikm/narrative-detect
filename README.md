@@ -64,8 +64,20 @@ MIT
 
 ## Hosted demo
 
-Live demo (best-effort, may change): https://adjustable-mall-size-passenger.trycloudflare.com
+- **Colab (recommended / zero setup):**
+  https://colab.research.google.com/github/yukikm/narrative-detect/blob/main/demo/NarrativeDetect_Demo.ipynb
+
+(If you prefer to run locally, see Quickstart above.)
 
 ## Evidence / sample outputs
 
-See `out/report.md` and `out/ideas.md` (generated from `data/sample_posts.jsonl`).
+- Deterministic sample outputs (generated from `data/sample_posts.jsonl`):
+  - `out/report.md`
+  - `out/report.json`
+  - `out/ideas.md`
+- You can reproduce them locally with:
+
+```bash
+narrative detect data/sample_posts.jsonl --out out/report.md
+narrative ideas out/report.json --out out/ideas.md
+```
