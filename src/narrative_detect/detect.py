@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Optional
 
 import numpy as np
 import pandas as pd
@@ -125,9 +125,30 @@ def _top_keywords_from_cluster(texts: List[str], top_k: int = 8) -> List[str]:
     return [inv_vocab[i] for i in idx if i in inv_vocab]
 
 
-def _representative_posts(texts: List[str], X: np.ndarray, top_k: int = 4) -> List[str]:
-    # centroid similarity
-    centroid = np.mean(X, axis=0, keepdims=True)
+def _representative_posts(
+    texts: List[str],
+    X: np.ndarray,
+    ts: Optional[pd.Series] = None,
+    top_k: int = 4,
+) -> List[str]:
+    """Pick representative posts.
+
+    If timestamps are available, bias the centroid toward recent posts so the
+    representatives look more like the *current* narrative.
+    """
+    if ts is not None and ts.notna().any():
+        now = datetime.now(timezone.utc)
+        ages_h = ((now - ts.dropna()).dt.total_seconds() / 3600.0).clip(lower=0.0)
+        # map weights back to full index; missing ts -> low weight
+        w = np.full((len(texts),), 0.1, dtype=float)
+        valid_idx = np.where(ts.notna().to_numpy())[0]
+        w_valid = np.exp(-ages_h.to_numpy() / 24.0)  # 24h decay
+        w[valid_idx] = w_valid
+        w = w / (w.sum() + 1e-12)
+        centroid = (X * w[:, None]).sum(axis=0, keepdims=True)
+    else:
+        centroid = np.mean(X, axis=0, keepdims=True)
+
     sims = cosine_similarity(X, centroid).ravel()
     idx = np.argsort(-sims)[:top_k]
     return [texts[i] for i in idx]
@@ -188,7 +209,7 @@ def detect_narratives(input_path: Path, method: str = "auto", k: int = 6) -> Dic
         texts = sub["text"].tolist()
         Xsub = X[sub.index.values]
         keywords = _top_keywords_from_cluster(texts)
-        reps = _representative_posts(texts, Xsub)
+        reps = _representative_posts(texts, Xsub, ts=sub["ts"])
         narratives.append(
             {
                 "id": int(lab),
