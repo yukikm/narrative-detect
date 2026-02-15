@@ -61,3 +61,11 @@ Fields supported: `id`, `ts` (ISO8601), `text`, `source`, `url`.
 ## License
 
 MIT
+
+## Hosted demo
+
+Live demo (best-effort, may change): https://adjustable-mall-size-passenger.trycloudflare.com
+
+## Evidence / sample outputs
+
+See `out/report.md` and `out/ideas.md` (generated from `data/sample_posts.jsonl`).
