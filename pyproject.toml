@@ -1,0 +1,30 @@
+[project]
+name = "narrative-detect"
+version = "0.1.0"
+description = "Offline-first narrative detection + idea generation tool (prototype)"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name="0xOpenClaw"}]
+dependencies = [
+  "typer>=0.12",
+  "rich>=13.7",
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "scikit-learn>=1.5",
+]
+
+[project.optional-dependencies]
+semantic = [
+  "sentence-transformers>=2.7",
+  "hdbscan>=0.8",
+]
+web = [
+  "streamlit>=1.32",
+]
+
+[project.scripts]
+narrative = "narrative_detect.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
