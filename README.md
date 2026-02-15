@@ -40,6 +40,18 @@ pip install -e ".[web]"
 streamlit run web/app.py
 ```
 
+## Data sources
+
+This prototype is **offline-first** and ships with a small bundled sample dataset (`data/sample_posts.jsonl`) so anyone can reproduce outputs.
+
+The intent is that you swap in real Solana signals by generating the same JSONL format from any combination of:
+
+- Social: X (selected KOLs), Discord/Telegram public channels, forums, blogs
+- Dev activity: GitHub repos/commits/stars
+- On-chain: program deployments, TX volume spikes, protocol usage, wallet behavior
+
+(Keeping ingestion modular is deliberate: data access varies by environment and API keys.)
+
 ## Data format
 
 JSONL records with at least:
@@ -50,12 +62,32 @@ JSONL records with at least:
 
 Fields supported: `id`, `ts` (ISO8601), `text`, `source`, `url`.
 
+## Example detected narratives + ideas (from sample dataset)
+
+Running the Quickstart on the bundled sample produces narratives like:
+
+- `solana / depin / demand`
+- `session keys / session / keys`
+- `resistance / sybil / sybil resistance`
+- `restaking / better / rehypothecation`
+- `defi / agents coordinating / ai agents`
+
+…and for each narrative the tool generates **3–5 build ideas**.
+
+See:
+- `out/report.md` for the narrative list + explanations + representative posts
+- `out/ideas.md` for the ideas (tied to each narrative)
+
 ## How narrative detection works (prototype)
 
 1. **Vectorize** posts (TF‑IDF by default; sentence embeddings in `--method semantic`).
 2. **Cluster** into narratives (KMeans by default; HDBSCAN in semantic mode).
 3. **Summarize** each cluster with top keywords + representative posts.
-4. Compute a simple **trend score** from volume + recentness + burstiness.
+4. Compute a simple **trend score** from volume + recentness + burstiness:
+   - `volume = log(1 + n_posts)`
+   - `recency = mean(exp(-age_hours / 24))` (roughly 24h half-life)
+   - `burst = std(exp(-age_hours / 6))` (more sensitive to sudden spikes)
+   - `trend_score = 0.7 * volume * recency + 0.3 * burst`
 5. Generate **idea prompts** using deterministic templates (no API keys required).
 
 ## License
