@@ -21,6 +21,11 @@ semantic = [
 web = [
   "streamlit>=1.32",
 ]
+ingest = [
+  "python-dotenv>=1.0",
+  "requests>=2.32",
+  "feedparser>=6.0",
+]
 
 [project.scripts]
 narrative = "narrative_detect.cli:app"

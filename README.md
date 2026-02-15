@@ -44,16 +44,43 @@ streamlit run web/app.py
 
 ### How we get “SNS narratives”
 
-Right now this repo **does not scrape X/Discord/Telegram directly**. It’s designed to be **data-source agnostic**: you provide a JSONL of posts, and the tool detects narratives + generates ideas.
+This repo is designed to be **data-source agnostic**:
+- core pipeline: JSONL posts → narratives → ideas (always works offline on the bundled sample)
+- optional connectors: generate the same JSONL format from real sources
 
 In the hosted demo (Colab), we run on the bundled sample dataset (`data/sample_posts.jsonl`).
 
-To run on real data, you typically generate the same JSONL format via one of these paths:
-- **Exports**: X export / CSV → convert to JSONL
-- **APIs** (requires your own keys): X API, Reddit API, Farcaster/Hubs, etc.
-- **Public feeds**: RSS/blog feeds / GitHub events (no auth)
+#### Direct ingestion (optional)
 
-If you tell me the exact sources you want (e.g. X lists + a few Telegram channels), I can add an `ingest` command/module that produces `posts.jsonl` from those sources in a reproducible way (keeping keys optional and out of the repo).
+Install with:
+
+```bash
+pip install -e ".[ingest]"
+```
+
+Then you can generate `out/posts.jsonl`:
+
+- RSS/Atom (no keys):
+
+```bash
+narrative ingest rss --url https://example.com/feed.xml --out out/posts.jsonl
+```
+
+- X recent search (requires API access + `X_BEARER_TOKEN` in `.env`):
+
+```bash
+narrative ingest x --query "solana (depin OR restaking)" --out out/posts.jsonl
+```
+
+- Telegram (open channels): **export-based** (Telegram Desktop → Export data → JSON):
+
+```bash
+narrative ingest telegram-export --telegram-export path/to/result.json --out out/posts.jsonl
+```
+
+Notes:
+- **Never commit secrets**. Use `.env` locally (see `.env.example`).
+- If you don’t have keys/exports, the tool still works on `data/sample_posts.jsonl`.
 
 This prototype is **offline-first** and ships with a small bundled sample dataset (`data/sample_posts.jsonl`) so anyone can reproduce outputs.
 
